@@ -4,6 +4,12 @@ members = [
 	"crates/cli",
 	"crates/macro-definitions",
 	"crates/macro-expansion",
-	"crates/roblox-rs", "crates/shared-context",
+	"crates/roblox-rs",
+	"crates/shared-context",
 	"examples/test-project",
 ]
+
+[workspace.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
+pre-release-commit-message = "Bump v{{version}}"
