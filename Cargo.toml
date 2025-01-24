@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = [
+	"crates/cli",
+	"crates/macro-definitions",
+	"crates/macro-expansion",
+	"crates/roblox-rs", "crates/shared-context",
+	"examples/test-project",
+]

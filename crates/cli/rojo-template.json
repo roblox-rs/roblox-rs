@@ -1,0 +1,12 @@
+{
+	"name": "roblox-rs-project",
+	"tree": {
+		"$className": "DataModel",
+
+		"ServerScriptService": {
+			"RS": {
+				"$path": "./server"
+			}
+		}
+	}
+}

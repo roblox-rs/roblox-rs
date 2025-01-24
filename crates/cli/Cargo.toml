@@ -1,0 +1,17 @@
+[package]
+name = "roblox-rs-cli"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+walrus = "0.23"
+log = "0.4"
+env_logger = "0.11"
+codegen-luau = { git = "https://github.com/Rerumu/Wasynth.git" }
+wasm-ast = { git = "https://github.com/Rerumu/Wasynth.git" }
+roblox-rs-shared-context = { path = "../shared-context" }
+
+[[bin]]
+name = "roblox-rs"
+path = "src/main.rs"
