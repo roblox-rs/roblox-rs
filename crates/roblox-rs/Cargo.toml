@@ -2,6 +2,9 @@
 name = "roblox-rs"
 version = "0.0.1"
 edition = "2021"
+description = "This crate contains support for Luau bindgen and generated bindings to the Roblox API."
+license = "MPL-2.0"
+repository = "https://github.com/roblox-rs/bindings"
 
 [dependencies]
 roblox-rs-macro-definitions = { path = "../macro-definitions", version = "0.0.1" }

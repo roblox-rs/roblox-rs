@@ -2,6 +2,9 @@
 name = "roblox-rs-cli"
 version = "0.0.1"
 edition = "2021"
+description = "This is the roblox-rs executable."
+license = "MPL-2.0"
+repository = "https://github.com/roblox-rs/bindings"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -10,7 +13,7 @@ log = "0.4"
 env_logger = "0.11"
 codegen-luau = { git = "https://github.com/Rerumu/Wasynth.git" }
 wasm-ast = { git = "https://github.com/Rerumu/Wasynth.git" }
-roblox-rs-shared-context = { path = "../shared-context" }
+roblox-rs-shared-context = { path = "../shared-context", version = "0.0.1" }
 
 [[bin]]
 name = "roblox-rs"

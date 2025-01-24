@@ -2,6 +2,9 @@
 name = "roblox-rs-macro-definitions"
 version = "0.0.1"
 edition = "2021"
+description = "This crate exposes the roblox-rs procedural macros."
+license = "MPL-2.0"
+repository = "https://github.com/roblox-rs/bindings"
 
 [lib]
 proc-macro = true

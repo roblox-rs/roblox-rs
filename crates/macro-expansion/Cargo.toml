@@ -2,6 +2,9 @@
 name = "roblox-rs-macro-expansion"
 version = "0.0.1"
 edition = "2021"
+description = "This crate implements the roblox-rs procedural macro expansion."
+license = "MPL-2.0"
+repository = "https://github.com/roblox-rs/bindings"
 
 [dependencies]
 quote = "1.0"

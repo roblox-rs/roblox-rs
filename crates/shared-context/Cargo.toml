@@ -2,6 +2,9 @@
 name = "roblox-rs-shared-context"
 version = "0.0.1"
 edition = "2021"
+description = "This crate communicates between roblox-rs bindings and the tooling."
+license = "MPL-2.0"
+repository = "https://github.com/roblox-rs/bindings"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
