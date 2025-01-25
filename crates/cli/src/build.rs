@@ -131,12 +131,8 @@ pub fn build(mut module: Module, out: PathBuf) {
         module.funcs.delete(id);
     }
 
-    walrus::passes::gc::run(&mut module);
-
     // Expose the stack pointer, if it exists.
     for global in module.globals.iter() {
-        debug!("global: {global:?}");
-
         if let Some("__stack_pointer") = global.name.as_deref() {
             module.exports.add("__stack_pointer", global.id());
             break;
@@ -147,6 +143,8 @@ pub fn build(mut module: Module, out: PathBuf) {
     if let Some(table) = module.tables.main_function_table().unwrap() {
         module.exports.add("__func_table", table);
     }
+
+    walrus::passes::gc::run(&mut module);
 
     let emit = module.emit_wasm();
     let wasynth_module = wasm_ast::module::Module::try_from_data(&emit).expect("module failure");
