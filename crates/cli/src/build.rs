@@ -30,6 +30,8 @@ pub fn build(mut module: Module, out: PathBuf) {
         .map(|v| roblox_rs_shared_context::decode(&v.data))
         .unwrap_or_default();
 
+    let main_names = shared_context.main_fns;
+
     let mut import_fns = Vec::new();
     let mut export_fns = Vec::new();
 
@@ -89,13 +91,13 @@ pub fn build(mut module: Module, out: PathBuf) {
             continue;
         };
 
+        removed_exports.insert(describe_export.id());
+        removed_functions.insert(describe_func_id);
+
         // This is a valid import, but the Rust code doesn't use it so we shouldn't generate it.
         if find_import(&module, &import.export_name).is_none() {
             continue;
         }
-
-        removed_exports.insert(describe_export.id());
-        removed_functions.insert(describe_func_id);
 
         let Describe::Function { args, return_type } = interpret_describe(describe_id, func) else {
             continue;
@@ -176,7 +178,7 @@ pub fn build(mut module: Module, out: PathBuf) {
             .expect("render failed");
     }
 
-    render_context.render(RuntimeTail).unwrap();
+    render_context.render(RuntimeTail { main_names }).unwrap();
 
     wasm.flush().expect("flush failed");
     runtime.flush().expect("flush failed");

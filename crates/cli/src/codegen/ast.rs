@@ -21,13 +21,23 @@ impl Render for RuntimeHeader {
         writeln!(ctx, "local WASM_CTOR = require(script.Parent.wasm)")?;
         writeln!(ctx, "local WASM_FUNCS = {{}}")?;
         writeln!(ctx, "local WASM_EXPORTS = {{}}")?;
+        writeln!(ctx, "local HEAP, HEAP_ID = {{}}, 0")?;
         writeln!(ctx, "local WASM, MEMORY, WASM_STACK")?;
+
+        // heap intrinsics
+        writeln!(ctx, "local function HEAP_TAKE(id)")?;
+        writeln!(ctx, "\tlocal value = HEAP[id]")?;
+        writeln!(ctx, "\tHEAP[id] = nil")?;
+        writeln!(ctx, "\treturn value")?;
+        writeln!(ctx, "end")?;
 
         Ok(())
     }
 }
 
-pub struct RuntimeTail;
+pub struct RuntimeTail {
+    pub main_names: Vec<String>,
+}
 
 impl Render for RuntimeTail {
     fn render(&self, ctx: &mut RenderContext) -> io::Result<()> {
@@ -38,7 +48,11 @@ impl Render for RuntimeTail {
 
         writeln!(ctx, "MEMORY = WASM.memory_list.memory")?;
         writeln!(ctx, "WASM_STACK = WASM.global_list.__stack_pointer")?;
-        writeln!(ctx, "WASM.func_list.main()")?;
+
+        for name in &self.main_names {
+            writeln!(ctx, "WASM.func_list.{name}()")?;
+        }
+
         writeln!(ctx, "return WASM_EXPORTS")?;
 
         Ok(())
@@ -283,6 +297,7 @@ impl Render for AbiToLuauConversion<'_> {
             | Describe::I32
             | Describe::F64
             | Describe::F32 => write!(ctx, "{}", self.names[0]),
+            Describe::ExternRef => write!(ctx, "HEAP_TAKE({})", self.names[0]),
             Describe::Boolean => write!(ctx, "{} == 1", self.names[0]),
             Describe::Void => write!(ctx, "nil"),
             Describe::Ref | Describe::RefMut => unimplemented!(),
@@ -321,6 +336,12 @@ impl Render for LuauToAbiConversion<'_> {
             Describe::Void => Ok(()),
             Describe::Ref | Describe::RefMut => unimplemented!(),
             Describe::Function { .. } => unimplemented!(),
+            Describe::ExternRef => {
+                writeln!(ctx.prereq, "HEAP_ID += 1")?;
+                writeln!(ctx.prereq, "local HEAP_{} = HEAP_ID", self.name)?;
+                writeln!(ctx.prereq, "HEAP[HEAP_ID] = {}", self.name)?;
+                write!(ctx, "HEAP_{}", self.name)
+            }
             Describe::Option { ty } => {
                 writeln!(ctx.prereq, "if {} ~= nil then", self.name)?;
 

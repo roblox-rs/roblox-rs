@@ -17,6 +17,7 @@ pub fn decode(content: &[u8]) -> SharedContext {
     while let Ok(value) = bincode::deserialize_from::<_, SharedContext>(&mut cursor) {
         context.imports.extend(value.imports);
         context.exports.extend(value.exports);
+        context.main_fns.extend(value.main_fns);
     }
 
     context

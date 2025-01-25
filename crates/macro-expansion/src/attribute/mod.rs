@@ -8,10 +8,12 @@ use expand::Expand;
 use proc_macro2::TokenStream;
 use syn::{FnArg, Item, Type};
 
-pub fn expand_attribute(_: TokenStream, input: TokenStream) -> TokenStream {
+pub fn expand_attribute(attrs: TokenStream, input: TokenStream) -> TokenStream {
     let mut context = Context {
         imports: Vec::new(),
         exports: Vec::new(),
+        main_fns: Vec::new(),
+        attributes: syn::parse2(attrs).unwrap(),
     };
 
     syn::parse2::<Item>(input).unwrap().expand(&mut context);

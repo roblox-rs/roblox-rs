@@ -6,6 +6,7 @@ use super::{
     context::{
         export::{ContextExport, ExportFunction},
         import::{ContextImport, ImportFunction, ImportKind},
+        mains::ContextMain,
     },
     type_from_arg, Context,
 };
@@ -66,10 +67,18 @@ impl Expand for ForeignItemFn {
 
 impl Expand for ItemFn {
     fn expand(&self, ctx: &mut Context) {
-        let attributes = ParsedAttributes::fetch(&self.attrs);
+        let attributes = &ctx.attributes;
         let item = self.clone();
         let rust_name = item.sig.ident.to_string();
         let export_name = new_symbol_name(&rust_name);
+        if matches!(attributes.main, Some(true)) {
+            return ctx.main_fns.push(ContextMain {
+                item,
+                rust_name,
+                export_name,
+            });
+        }
+
         let describe_name = new_symbol_name(&rust_name);
         let luau_name = attributes.name.as_ref().unwrap_or(&rust_name).clone();
         let arguments = item.sig.inputs.iter().map(type_from_arg).collect();

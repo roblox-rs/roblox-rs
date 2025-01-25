@@ -18,6 +18,7 @@ pub const VOID: u32 = 10;
 pub const F32: u32 = 11;
 pub const F64: u32 = 12;
 pub const OPTION: u32 = 13;
+pub const EXTERNREF: u32 = 14;
 
 macro_rules! simple {
 	($($t:ty:$e:expr;)*) => {

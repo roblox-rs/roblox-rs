@@ -12,6 +12,7 @@ const VOID: u32 = 10;
 const F32: u32 = 11;
 const F64: u32 = 12;
 const OPTION: u32 = 13;
+const EXTERNREF: u32 = 14;
 
 #[derive(Debug, Clone)]
 pub enum Describe {
@@ -27,6 +28,7 @@ pub enum Describe {
     F64,
     Ref,
     RefMut,
+    ExternRef,
     Function {
         args: Vec<Describe>,
         return_type: Box<Describe>,
@@ -50,7 +52,8 @@ impl Describe {
             | Describe::F64
             | Describe::Boolean
             | Describe::Ref
-            | Describe::RefMut => 1,
+            | Describe::RefMut
+            | Describe::ExternRef => 1,
             Describe::Function { .. } => unimplemented!(),
             Describe::Option { ty } => 1 + ty.value_count(),
         }
@@ -71,6 +74,7 @@ impl Describe {
             Describe::U8 | Describe::U16 | Describe::U32 => out.push(Primitive::U32),
             Describe::I8 | Describe::I16 | Describe::I32 => out.push(Primitive::I32),
             Describe::Boolean => out.push(Primitive::U32),
+            Describe::ExternRef => out.push(Primitive::U32),
             Describe::Void => {}
             Describe::F32 => out.push(Primitive::F32),
             Describe::F64 => out.push(Primitive::F64),
@@ -101,6 +105,7 @@ impl Describe {
             VOID => Describe::Void,
             F32 => Describe::F32,
             F64 => Describe::F64,
+            EXTERNREF => Describe::ExternRef,
             FUNCTION => {
                 let arg_count = Describe::take(value);
 
