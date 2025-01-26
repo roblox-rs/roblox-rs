@@ -6,7 +6,7 @@ use roblox_rs_shared_context::shared_context::SharedImportFunction;
 
 use super::{
     description::FunctionDescription,
-    emit::{emit_id, get_abi_args, with_item, with_trait, Emit},
+    emit::{emit_id, get_abi_args, with_assoc, with_item, with_trait, Emit},
 };
 
 #[derive(Debug)]
@@ -80,7 +80,7 @@ impl Emit for ImportFunction {
         for (index, arg) in self.arguments.iter().enumerate() {
             let arg_name = emit_id(format!("arg{index}"));
             let into_abi = with_trait(arg, "WasmIntoAbi");
-            let wasm_abi = with_trait(arg, "WasmAbi");
+            let wasm_abi = with_trait(with_assoc(&into_abi, "Abi"), "WasmAbi");
             let (names, args) = get_abi_args(&arg_name, arg);
 
             def_args.push(quote! { #arg_name: #arg });
@@ -98,7 +98,7 @@ impl Emit for ImportFunction {
         let from_abi = with_item("WasmFromAbi");
         let (abi_return, abi_return_transform) = match &self.return_type {
             Some(value) => (
-                quote! { -> #return_abi<#value> },
+                quote! { -> #return_abi<<#value as #from_abi>::Abi> },
                 quote! { <#value as #from_abi>::from_abi(#return_id.join()) },
             ),
             None => (quote! {}, quote! {}),
