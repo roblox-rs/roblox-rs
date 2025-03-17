@@ -18,6 +18,7 @@ pub fn decode(content: &[u8]) -> SharedContext {
         context.imports.extend(value.imports);
         context.exports.extend(value.exports);
         context.main_fns.extend(value.main_fns);
+        context.intrinsics.extend(value.intrinsics);
     }
 
     context

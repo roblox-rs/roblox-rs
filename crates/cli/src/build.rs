@@ -1,6 +1,5 @@
 use std::{collections::HashSet, fs, io::Write, path::PathBuf};
 
-use log::debug;
 use walrus::{
     ir::{Call, Const, Instr, Value},
     Export, ExportItem, FunctionId, FunctionKind, Import, ImportKind, LocalFunction, Module,
@@ -123,14 +122,6 @@ pub fn build(mut module: Module, out: PathBuf) {
         })
     }
 
-    for id in removed_exports {
-        module.exports.delete(id);
-    }
-
-    for id in removed_functions {
-        module.funcs.delete(id);
-    }
-
     // Expose the stack pointer, if it exists.
     for global in module.globals.iter() {
         if let Some("__stack_pointer") = global.name.as_deref() {
@@ -144,11 +135,6 @@ pub fn build(mut module: Module, out: PathBuf) {
         module.exports.add("__func_table", table);
     }
 
-    walrus::passes::gc::run(&mut module);
-
-    let emit = module.emit_wasm();
-    let wasynth_module = wasm_ast::module::Module::try_from_data(&emit).expect("module failure");
-
     fs::create_dir_all(out.join("server")).expect("could not create dir");
 
     write(out.join("default.project.json"), ROJO_TEMPLATE);
@@ -158,10 +144,8 @@ pub fn build(mut module: Module, out: PathBuf) {
     writeln!(wasm, "--!optimize 2").ok();
     writeln!(wasm, "{}", codegen_luau::RUNTIME).ok();
 
-    codegen_luau::from_module_untyped(&wasynth_module, &mut wasm).expect("wasm2luau failure");
-
     let mut runtime = fs::File::create(out.join("server/runtime.luau")).expect("file open failed");
-    let mut render_context = RenderContext::new(&mut runtime);
+    let mut render_context = RenderContext::new(&mut runtime, &shared_context.intrinsics);
     render_context.render(RuntimeHeader).unwrap();
 
     for import_fn in import_fns {
@@ -177,6 +161,29 @@ pub fn build(mut module: Module, out: PathBuf) {
     }
 
     render_context.render(RuntimeTail { main_names }).unwrap();
+
+    for intrinsic in &shared_context.intrinsics {
+        let intrinsic_name = intrinsic.name.as_str();
+
+        if !render_context.used_intrinsics.contains(&intrinsic_name) {
+            let export = find_export(&module, &intrinsic.export_name).expect("intrinsic to exist");
+            removed_exports.insert(export.id());
+        }
+    }
+
+    for id in removed_exports {
+        module.exports.delete(id);
+    }
+
+    for id in removed_functions {
+        module.funcs.delete(id);
+    }
+
+    walrus::passes::gc::run(&mut module);
+
+    let emit = module.emit_wasm();
+    let wasynth_module = wasm_ast::module::Module::try_from_data(&emit).expect("module failure");
+    codegen_luau::from_module_untyped(&wasynth_module, &mut wasm).expect("wasm2luau failure");
 
     wasm.flush().expect("flush failed");
     runtime.flush().expect("flush failed");
@@ -205,7 +212,9 @@ pub fn build(mut module: Module, out: PathBuf) {
                 Instr::Call(Call { func }) if Some(*func) == describe_id => {
                     describe.push(stack);
                 }
-                _ => {}
+                _ => {
+                    unimplemented!("unexpected instruction in description function: {instr:?}")
+                }
             }
         }
         Describe::parse(&describe)

@@ -44,6 +44,7 @@ impl Context {
             imports: self.imports.into_iter().map(Into::into).collect(),
             exports: self.exports.into_iter().map(Into::into).collect(),
             main_fns: self.main_fns.into_iter().map(|v| v.export_name).collect(),
+            intrinsics: Vec::new(),
         };
 
         let encoded_data = roblox_rs_shared_context::encode(&shared_context);

@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 
+use roblox_rs_shared_context::shared_context::SharedIntrinsic;
+
 pub trait Render {
     fn render(&self, ctx: &mut RenderContext) -> io::Result<()>;
 }
@@ -62,14 +64,30 @@ impl<T: Write> Write for IndentedWriter<T> {
 pub struct RenderContext<'a> {
     pub writer: IndentedWriter<&'a mut dyn Write>,
     pub prereq: RenderPrereqContext,
+    pub used_intrinsics: Vec<&'a str>,
+    pub intrinsics: &'a [SharedIntrinsic],
 }
 
 impl<'a> RenderContext<'a> {
-    pub fn new(out: &'a mut dyn Write) -> Self {
+    pub fn new(out: &'a mut dyn Write, intrinsics: &'a [SharedIntrinsic]) -> Self {
         Self {
             writer: IndentedWriter::new(out),
             prereq: RenderPrereqContext { prereq: None },
+            used_intrinsics: Vec::new(),
+            intrinsics,
         }
+    }
+
+    pub fn intrinsic(&mut self, name: &'static str) -> String {
+        let Some(intrinsic) = self.intrinsics.iter().find(|v| v.name == name) else {
+            panic!("unknown intrinsic '{name}'")
+        };
+
+        if !self.used_intrinsics.contains(&name) {
+            self.used_intrinsics.push(name);
+        }
+
+        intrinsic.export_name.clone()
     }
 
     pub fn up(&mut self) {
@@ -89,7 +107,7 @@ impl<'a> RenderContext<'a> {
     /// A Render implementation might not return an expression, so it is optional.
     pub fn render_expr(&mut self, ast: impl Render) -> io::Result<(Vec<u8>, Option<String>)> {
         let mut writer = Vec::new();
-        let mut context = RenderContext::new(&mut writer);
+        let mut context = RenderContext::new(&mut writer, self.intrinsics);
         context.prereq = RenderPrereqContext {
             prereq: Some(IndentedWriter::new(Vec::new())),
         };
