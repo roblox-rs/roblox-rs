@@ -1,6 +1,7 @@
 use crate::describe::Describe;
 
-pub mod ast;
+pub mod instructions;
+pub mod macros;
 pub mod traits;
 
 pub fn splat(ty: &Describe, prefix: &str) -> Vec<String> {

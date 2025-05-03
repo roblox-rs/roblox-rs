@@ -39,7 +39,7 @@ pub enum Describe {
 }
 
 impl Describe {
-    pub fn value_count(&self) -> u32 {
+    pub fn value_count(&self) -> usize {
         match self {
             Describe::Void => 0,
             Describe::U8
@@ -59,7 +59,7 @@ impl Describe {
         }
     }
 
-    pub fn memory_size(&self) -> u32 {
+    pub fn memory_size(&self) -> usize {
         self.primitive_values().iter().map(|v| v.byte_size()).sum()
     }
 
@@ -142,7 +142,7 @@ pub enum Primitive {
 }
 
 impl Primitive {
-    pub fn byte_size(&self) -> u32 {
+    pub fn byte_size(&self) -> usize {
         match self {
             Primitive::U32 => 4,
             Primitive::I32 => 4,

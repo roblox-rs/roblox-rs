@@ -7,9 +7,11 @@ use walrus::{
 
 use crate::{
     codegen::{
-        ast::{self, RuntimeHeader, RuntimeTail},
-        splat,
-        traits::{Render, RenderContext},
+        instructions::{
+            self,
+            headers::{CreateRuntimeHeader, CreateRuntimeTail},
+        },
+        traits::{Instruction, InstructionContext},
     },
     describe::Describe,
 };
@@ -60,21 +62,19 @@ pub fn build(mut module: Module, out: PathBuf) {
         let export_name = export.export_name.to_string();
         let luau_name = export.luau_name.to_string();
         let output_type = *return_type.clone();
-        let parameters = args
-            .into_iter()
-            .enumerate()
-            .map(|(i, ty)| {
-                let name = format!("arg{i}");
-                ast::ExportFnParameter { name, ty }
-            })
-            .collect();
-
-        export_fns.push(ast::ExportFn {
-            export_name,
-            luau_name,
-            parameters,
-            output_type,
+        let parameters = args;
+        let body = Box::new(instructions::InvokeRustFunction {
+            function_name: export_name,
+            output_type: output_type.clone(),
+            parameters: parameters.clone(),
         });
+
+        export_fns.push(instructions::WasmCreateExport {
+            luau_name,
+            output_type,
+            parameters,
+            body,
+        })
     }
 
     for import in shared_context.imports.iter() {
@@ -104,22 +104,24 @@ pub fn build(mut module: Module, out: PathBuf) {
 
         let luau_name = import.luau_name.to_string();
         let export_name = import.export_name.to_string();
-        let output_type = *return_type.clone();
-        let parameters = args
-            .into_iter()
-            .enumerate()
-            .map(|(i, ty)| {
-                let names = splat(&ty, &format!("arg{i}"));
-                ast::InputFnParameter { names, ty }
-            })
-            .collect();
+        let output = *return_type.clone();
+        let parameters = args;
+        let body = Box::new(instructions::AbiBlock {
+            inputs: parameters.clone(),
+            output: output.clone(),
+            body: Box::new(instructions::InvokeLuauFunction {
+                function_name: luau_name.clone(),
+                parameter_count: parameters.len(),
+                result_count: output.value_count().min(1),
+            }),
+        });
 
-        import_fns.push(ast::ImportFn {
-            luau_name,
+        import_fns.push(instructions::WasmCreateImport {
             export_name,
             parameters,
-            output_type,
-        })
+            output,
+            body,
+        });
     }
 
     // Expose the stack pointer, if it exists.
@@ -145,27 +147,28 @@ pub fn build(mut module: Module, out: PathBuf) {
     writeln!(wasm, "{}", codegen_luau::RUNTIME).ok();
 
     let mut runtime = fs::File::create(out.join("server/runtime.luau")).expect("file open failed");
-    let mut render_context = RenderContext::new(&mut runtime, &shared_context.intrinsics);
-    render_context.render(RuntimeHeader).unwrap();
+    let mut ctx = InstructionContext::new(&mut runtime, &shared_context.intrinsics);
 
-    for import_fn in import_fns {
-        import_fn
-            .render(&mut render_context)
-            .expect("render failed");
+    CreateRuntimeHeader.render(&mut ctx).unwrap();
+
+    for instr in import_fns {
+        instr.render(&mut ctx).expect("render failed");
+
+        debug_assert_eq!(ctx.inputs.len(), 0);
     }
 
-    for export_fn in export_fns {
-        export_fn
-            .render(&mut render_context)
-            .expect("render failed");
+    for instr in export_fns {
+        instr.render(&mut ctx).expect("render failed");
+
+        debug_assert_eq!(ctx.inputs.len(), 0);
     }
 
-    render_context.render(RuntimeTail { main_names }).unwrap();
+    CreateRuntimeTail { main_names }.render(&mut ctx).unwrap();
 
     for intrinsic in &shared_context.intrinsics {
         let intrinsic_name = intrinsic.name.as_str();
 
-        if !render_context.used_intrinsics.contains(&intrinsic_name) {
+        if !ctx.intrinsics.used.contains(&intrinsic_name) {
             let export = find_export(&module, &intrinsic.export_name).expect("intrinsic to exist");
             removed_exports.insert(export.id());
         }
