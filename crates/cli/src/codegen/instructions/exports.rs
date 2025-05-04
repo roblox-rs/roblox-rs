@@ -7,13 +7,11 @@ use crate::{
         traits::{Instruction, InstructionContext},
     },
     describe::{Describe, Primitive},
-    iter_ext::IterDoneExt,
 };
 
 pub struct WasmCreateExport {
     pub luau_name: String,
     pub parameters: Vec<Describe>,
-    pub output_type: Describe,
     pub body: Box<dyn Instruction>,
 }
 
@@ -22,28 +20,15 @@ impl Instruction for WasmCreateExport {
         ctx.vars.scope();
 
         let luau_name = &self.luau_name;
-        let parameters = self
-            .parameters
-            .iter()
-            .map(|v| (v, ctx.vars.next("param")))
-            .collect::<Vec<_>>();
+        let parameters = ctx.vars.many(self.parameters.len(), "param");
 
         text!(ctx, "WASM_EXPORTS[\"{luau_name}\"] = function(");
-        list!(ctx, parameters; |v| v.1);
+        list!(ctx, parameters);
         push!(ctx, ")");
 
-        for (ty, name) in &parameters {
-            ctx.push(name);
-
-            LuauToRust { ty }.render(ctx)?;
-        }
+        ctx.inputs.extend(parameters);
 
         self.body.render(ctx)?;
-
-        RustToLuau {
-            ty: &self.output_type,
-        }
-        .render(ctx)?;
 
         let value = ctx.pop();
         line!(ctx, "return {value}");
@@ -60,6 +45,41 @@ impl Instruction for WasmCreateExport {
 
     fn get_outputs(&self) -> usize {
         0
+    }
+}
+
+/// This is a block that automatically converts the inputs from Luau to Rust, and outputs from Rust to Luau
+pub struct ExportBlock {
+    pub inputs: Vec<Describe>,
+    pub output: Describe,
+    pub body: Box<dyn Instruction>,
+}
+
+impl Instruction for ExportBlock {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let inputs = ctx.pop_many(self.inputs.len());
+
+        for (param, ty) in inputs.iter().zip(self.inputs.iter()) {
+            ctx.push(param);
+
+            LuauToRust { ty }.render(ctx)?;
+        }
+
+        self.body.render(ctx)?;
+
+        if self.body.get_outputs() != 0 {
+            RustToLuau { ty: &self.output }.render(ctx)?;
+        }
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        self.inputs.len()
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
     }
 }
 

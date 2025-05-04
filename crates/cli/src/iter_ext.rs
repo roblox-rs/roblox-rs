@@ -15,6 +15,7 @@ impl<T: Iterator> Iterator for IterDone<T> {
 }
 
 pub trait IterDoneExt<T: Iterator> {
+    #[allow(unused)]
     fn until_done(self) -> IterDone<T>;
 }
 

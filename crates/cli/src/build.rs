@@ -63,15 +63,18 @@ pub fn build(mut module: Module, out: PathBuf) {
         let luau_name = export.luau_name.to_string();
         let output_type = *return_type.clone();
         let parameters = args;
-        let body = Box::new(instructions::InvokeRustFunction {
-            function_name: export_name,
-            output_type: output_type.clone(),
-            parameters: parameters.clone(),
+        let body = Box::new(instructions::ExportBlock {
+            inputs: parameters.clone(),
+            output: output_type.clone(),
+            body: Box::new(instructions::InvokeRustFunction {
+                function_name: export_name,
+                parameters: parameters.clone(),
+                output_type: output_type.clone(),
+            }),
         });
 
         export_fns.push(instructions::WasmCreateExport {
             luau_name,
-            output_type,
             parameters,
             body,
         })
@@ -106,7 +109,7 @@ pub fn build(mut module: Module, out: PathBuf) {
         let export_name = import.export_name.to_string();
         let output = *return_type.clone();
         let parameters = args;
-        let body = Box::new(instructions::AbiBlock {
+        let body = Box::new(instructions::ImportBlock {
             inputs: parameters.clone(),
             output: output.clone(),
             body: Box::new(instructions::InvokeLuauFunction {

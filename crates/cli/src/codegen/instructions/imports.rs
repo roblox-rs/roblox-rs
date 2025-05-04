@@ -116,13 +116,13 @@ impl Instruction for InvokeLuauFunction {
 }
 
 /// This is a block that automatically converts the inputs from Rust to Luau, and outputs from Luau to Rust
-pub struct AbiBlock {
+pub struct ImportBlock {
     pub inputs: Vec<Describe>,
     pub output: Describe,
     pub body: Box<dyn Instruction>,
 }
 
-impl Instruction for AbiBlock {
+impl Instruction for ImportBlock {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let mut inputs = VecDeque::new();
 
