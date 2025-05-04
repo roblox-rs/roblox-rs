@@ -9,13 +9,13 @@ const RUNTIME_HEAD: &str = "\
 --!native
 --!optimize 2
 local WASM_CTOR = require(script.Parent.wasm)
-local WASM_FUNCS = {{}}
-local WASM_EXPORTS = {{}}
-local HEAP, HEAP_ID = {{}}, 0
+local WASM_FUNCS = {}
+local WASM_EXPORTS = {}
+local HEAP, HEAP_ID = {}, 0
 local WASM, MEMORY, WASM_STACK";
 
 const RUNTIME_TAIL: &str = "\
-WASM = WASM_CTOR({{ luau = {{ func_list = WASM_FUNCS }} }})
+WASM = WASM_CTOR({ luau = { func_list = WASM_FUNCS } })
 MEMORY = WASM.memory_list.memory
 WASM_STACK = WASM.global_list.__stack_pointer";
 
