@@ -51,11 +51,10 @@ impl Instruction for WasmCreateImport {
         self.body.render(ctx)?;
 
         if let Some(ptr) = out_param {
-            SpillMemory {
-                memory: ptr,
-                ty: self.output.clone(),
-            }
-            .render(ctx)?;
+            let primitives = &self.output.primitive_values();
+            ctx.push(ptr);
+
+            WriteMemory { primitives }.render(ctx)?;
         } else {
             text!(ctx, "return ");
             list!(ctx, ctx.pop_many(self.body.get_outputs()));
@@ -156,18 +155,17 @@ impl Instruction for AbiBlock {
     }
 }
 
-pub struct SpillMemory {
-    pub memory: String,
-    pub ty: Describe,
+pub struct WriteMemory<'a> {
+    pub primitives: &'a [Primitive],
 }
 
-impl Instruction for SpillMemory {
+impl Instruction for WriteMemory<'_> {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let mut offset = 0;
-        let memory = &self.memory;
-        let ty_exprs = ctx.pop_many(self.ty.value_count());
+        let memory = ctx.pop();
+        let ty_exprs = ctx.pop_many(self.primitives.len());
 
-        for (expr, prim) in ty_exprs.iter().zip(self.ty.primitive_values()) {
+        for (expr, prim) in ty_exprs.iter().zip(self.primitives) {
             let buffer_call = match prim {
                 Primitive::F32 => "writef32",
                 Primitive::F64 => "writef64",
@@ -187,7 +185,7 @@ impl Instruction for SpillMemory {
     }
 
     fn get_inputs(&self) -> usize {
-        self.ty.value_count()
+        self.primitives.len()
     }
 
     fn get_outputs(&self) -> usize {
