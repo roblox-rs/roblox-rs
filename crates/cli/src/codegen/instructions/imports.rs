@@ -185,7 +185,7 @@ impl Instruction for WriteMemory<'_> {
     }
 
     fn get_inputs(&self) -> usize {
-        self.primitives.len()
+        1 + self.primitives.len()
     }
 
     fn get_outputs(&self) -> usize {
