@@ -6,7 +6,7 @@ use crate::{
         macros::{line, list, pull, push, text},
         traits::{Instruction, InstructionContext},
     },
-    describe::Describe,
+    describe::{Describe, Primitive},
     iter_ext::IterDoneExt,
 };
 
@@ -73,8 +73,9 @@ impl Instruction for InvokeRustFunction {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let function_name = &self.function_name;
         let output_size = self.output_type.memory_size();
+        let output_count = self.output_type.value_count();
         let mut inputs = Vec::new();
-        let spill_ptr = if self.output_type.value_count() > 1 {
+        let spill_ptr = if output_count > 1 {
             let var = ctx.vars.next("spill");
             inputs.push(var.clone());
 
@@ -87,9 +88,8 @@ impl Instruction for InvokeRustFunction {
             inputs.extend(ctx.pop_many(ty.value_count()));
         }
 
-        let output_names = ctx.vars.many(self.output_type.value_count(), "output");
-
-        if self.output_type.value_count() != 0 {
+        let output_names = ctx.vars.many(output_count, "output");
+        if output_count != 0 {
             let output_names_sep = output_names.join(", ");
             ctx.inputs.extend(output_names.clone());
 
@@ -104,17 +104,13 @@ impl Instruction for InvokeRustFunction {
         line!(ctx, "WASM.func_list.{function_name}({})", inputs.join(", "));
 
         if let Some(spill_ptr) = &spill_ptr {
-            let output_primitives = self.output_type.primitive_values();
-            let mut offset = 0;
-            for (name, prim) in output_names.iter().zip(output_primitives.iter()) {
-                let buffer_name = prim.buffer_name();
+            let primitives = &self.output_type.primitive_values();
+            ctx.push(spill_ptr);
 
-                line!(
-                    ctx,
-                    "local {name} = buffer.read{buffer_name}(MEMORY.data, {spill_ptr} + {offset})"
-                );
+            PullMemory { primitives }.render(ctx)?;
 
-                offset += prim.byte_size();
+            for (name, expr) in output_names.iter().zip(ctx.pop_many(output_count)) {
+                line!(ctx, "local {name} = {expr}");
             }
 
             line!(ctx, "WASM_STACK.value = {spill_ptr} + {output_size}");
@@ -129,5 +125,35 @@ impl Instruction for InvokeRustFunction {
 
     fn get_outputs(&self) -> usize {
         self.output_type.value_count()
+    }
+}
+
+pub struct PullMemory<'a> {
+    pub primitives: &'a [Primitive],
+}
+
+impl Instruction for PullMemory<'_> {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let ptr = ctx.pop();
+
+        let mut offset = 0;
+        for prim in self.primitives {
+            let buffer_name = prim.buffer_name();
+            let expr = format!("buffer.read{buffer_name}(MEMORY.data, {ptr} + {offset})");
+
+            ctx.push(expr);
+
+            offset += prim.byte_size();
+        }
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        self.primitives.len()
     }
 }
