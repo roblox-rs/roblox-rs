@@ -104,8 +104,13 @@ impl Instruction for InvokeRustFunction {
             None
         };
 
-        for ty in &self.parameters {
-            inputs.extend(ctx.pop_many(ty.value_count()));
+        let mut parameter_inputs = Vec::new();
+        for ty in self.parameters.iter().rev() {
+            parameter_inputs.push(ctx.pop_many(ty.value_count()));
+        }
+
+        for param_input in parameter_inputs.into_iter().rev() {
+            inputs.extend(param_input);
         }
 
         let output_names = ctx.vars.many(output_count, "output");
