@@ -3,7 +3,6 @@ use std::io::{self, Write};
 use crate::{
     codegen::{
         macros::{line, list, pull, push, text},
-        splat,
         traits::{Instruction, InstructionContext},
     },
     describe::{Describe, Primitive},
