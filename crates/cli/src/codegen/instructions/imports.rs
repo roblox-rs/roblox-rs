@@ -29,15 +29,10 @@ impl Instruction for WasmCreateImport {
         let out_param = needs_spill.then(|| ctx.vars.next("ret"));
         parameter_defs.extend(out_param.iter().cloned());
 
-        for (i, param) in self
-            .parameters
-            .iter()
-            .filter(|v| v.value_count() != 0)
-            .enumerate()
-        {
-            let names = splat(param, &format!("arg{i}"));
-            parameter_defs.extend_from_slice(&names);
+        for param in &self.parameters {
+            let names = ctx.vars.many(param.value_count(), "arg");
 
+            parameter_defs.extend_from_slice(&names);
             ctx.inputs.extend(names);
         }
 
