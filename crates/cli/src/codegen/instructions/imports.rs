@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    io::{self, Write},
-};
+use std::io::{self, Write};
 
 use crate::{
     codegen::{
@@ -124,14 +121,14 @@ pub struct ImportBlock {
 
 impl Instruction for ImportBlock {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
-        let mut inputs = VecDeque::new();
+        let mut inputs = Vec::new();
 
         for param in self.inputs.iter().rev() {
             let names = ctx.pop_many(param.value_count());
-            inputs.push_front((param, names));
+            inputs.push((param, names));
         }
 
-        for (ty, names) in inputs {
+        for (ty, names) in inputs.into_iter().rev() {
             ctx.inputs.extend(names);
 
             RustToLuau { ty }.render(ctx)?;
