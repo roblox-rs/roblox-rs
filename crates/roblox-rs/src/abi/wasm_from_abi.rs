@@ -5,6 +5,8 @@ use super::{wasm_abi::WasmAbi, wasm_primitive::WasmPrimitive};
 pub trait WasmFromAbi: WasmDescribe {
     type Abi: WasmAbi;
 
+    /// # Safety
+    /// This function is only safe if used on values returned by the Luau runtime.
     unsafe fn from_abi(value: Self::Abi) -> Self;
 }
 
