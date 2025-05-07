@@ -13,6 +13,8 @@ const F32: u32 = 11;
 const F64: u32 = 12;
 const OPTION: u32 = 13;
 const EXTERNREF: u32 = 14;
+const STRING: u32 = 15;
+const SLICE: u32 = 16;
 
 #[derive(Debug, Clone)]
 pub enum Describe {
@@ -26,9 +28,17 @@ pub enum Describe {
     Void,
     F32,
     F64,
-    Ref,
-    RefMut,
     ExternRef,
+    String,
+    Slice {
+        ty: Box<Describe>,
+    },
+    Ref {
+        ty: Box<Describe>,
+    },
+    RefMut {
+        ty: Box<Describe>,
+    },
     Function {
         args: Vec<Describe>,
         return_type: Box<Describe>,
@@ -51,16 +61,21 @@ impl Describe {
             | Describe::F32
             | Describe::F64
             | Describe::Boolean
-            | Describe::Ref
-            | Describe::RefMut
             | Describe::ExternRef => 1,
             Describe::Function { .. } => unimplemented!(),
             Describe::Option { ty } => 1 + ty.value_count(),
+            Describe::Ref { ty } => ty.value_count(),
+            Describe::RefMut { ty } => ty.value_count(),
+            Describe::Slice { .. } => 2,
+            Describe::String => 2,
         }
     }
 
     pub fn memory_size(&self) -> usize {
-        self.primitive_values().iter().map(|v| v.byte_size()).sum()
+        self.primitive_values()
+            .iter()
+            .map(|v| v.byte_size_aligned())
+            .sum()
     }
 
     pub fn primitive_values(&self) -> Vec<Primitive> {
@@ -71,15 +86,21 @@ impl Describe {
 
     fn _primitive_values(&self, out: &mut Vec<Primitive>) {
         match self {
-            Describe::U8 | Describe::U16 | Describe::U32 => out.push(Primitive::U32),
-            Describe::I8 | Describe::I16 | Describe::I32 => out.push(Primitive::I32),
+            Describe::U8 => out.push(Primitive::U8),
+            Describe::U16 => out.push(Primitive::U16),
+            Describe::U32 => out.push(Primitive::U32),
+            Describe::I8 => out.push(Primitive::I8),
+            Describe::I16 => out.push(Primitive::I16),
+            Describe::I32 => out.push(Primitive::I32),
             Describe::Boolean => out.push(Primitive::U32),
             Describe::ExternRef => out.push(Primitive::U32),
             Describe::Void => {}
             Describe::F32 => out.push(Primitive::F32),
             Describe::F64 => out.push(Primitive::F64),
-            Describe::Ref | Describe::RefMut => unimplemented!(),
+            Describe::String => out.extend([Primitive::U32, Primitive::U32]),
             Describe::Function { .. } => unimplemented!(),
+            Describe::Slice { .. } => unimplemented!(),
+            Describe::Ref { ty } | Describe::RefMut { ty } => ty._primitive_values(out),
             Describe::Option { ty } => {
                 out.push(Primitive::U32);
                 ty._primitive_values(out);
@@ -100,12 +121,20 @@ impl Describe {
             I16 => Describe::I16,
             I32 => Describe::I32,
             BOOLEAN => Describe::Boolean,
-            REF => Describe::Ref,
-            REF_MUT => Describe::RefMut,
             VOID => Describe::Void,
             F32 => Describe::F32,
             F64 => Describe::F64,
             EXTERNREF => Describe::ExternRef,
+            STRING => Describe::String,
+            SLICE => Describe::Slice {
+                ty: Box::new(Describe::_parse(value)),
+            },
+            REF => Describe::Ref {
+                ty: Box::new(Describe::_parse(value)),
+            },
+            REF_MUT => Describe::RefMut {
+                ty: Box::new(Describe::_parse(value)),
+            },
             FUNCTION => {
                 let arg_count = Describe::take(value);
 
@@ -135,7 +164,11 @@ impl Describe {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Primitive {
+    U8,
+    U16,
     U32,
+    I8,
+    I16,
     I32,
     F32,
     F64,
@@ -144,18 +177,30 @@ pub enum Primitive {
 impl Primitive {
     pub fn byte_size(&self) -> usize {
         match self {
+            Primitive::U8 => 1,
+            Primitive::U16 => 2,
             Primitive::U32 => 4,
+            Primitive::I8 => 1,
+            Primitive::I16 => 2,
             Primitive::I32 => 4,
             Primitive::F32 => 4,
             Primitive::F64 => 8,
         }
     }
 
+    pub fn byte_size_aligned(&self) -> usize {
+        self.byte_size().max(4)
+    }
+
     pub fn buffer_name(&self) -> &'static str {
         match self {
             Primitive::F32 => "f32",
             Primitive::F64 => "f64",
+            Primitive::I8 => "i8",
+            Primitive::I16 => "i16",
             Primitive::I32 => "i32",
+            Primitive::U8 => "u8",
+            Primitive::U16 => "u16",
             Primitive::U32 => "u32",
         }
     }

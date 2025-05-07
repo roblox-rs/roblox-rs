@@ -19,6 +19,8 @@ pub const F32: u32 = 11;
 pub const F64: u32 = 12;
 pub const OPTION: u32 = 13;
 pub const EXTERNREF: u32 = 14;
+pub const STRING: u32 = 15;
+pub const SLICE: u32 = 16;
 
 macro_rules! simple {
 	($($t:ty:$e:expr;)*) => {
@@ -43,6 +45,8 @@ simple!(
     f32: F32;
     f64: F64;
     bool: BOOLEAN;
+    str: STRING;
+    String: STRING;
 );
 
 impl<T> WasmDescribe for *const T {
@@ -56,6 +60,13 @@ impl<T> WasmDescribe for *mut T {
     #[inline(always)]
     fn describe() {
         <u32 as WasmDescribe>::describe();
+    }
+}
+
+impl<T: WasmDescribe> WasmDescribe for [T] {
+    fn describe() {
+        describe(SLICE);
+        T::describe();
     }
 }
 

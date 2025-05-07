@@ -168,7 +168,7 @@ impl Instruction for PullMemory<'_> {
 
             ctx.push(expr);
 
-            offset += prim.byte_size();
+            offset += prim.byte_size_aligned();
         }
 
         Ok(())

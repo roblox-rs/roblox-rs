@@ -157,19 +157,14 @@ impl Instruction for WriteMemory<'_> {
         let ty_exprs = ctx.pop_many(self.primitives.len());
 
         for (expr, prim) in ty_exprs.iter().zip(self.primitives) {
-            let buffer_call = match prim {
-                Primitive::F32 => "writef32",
-                Primitive::F64 => "writef64",
-                Primitive::I32 => "writei32",
-                Primitive::U32 => "writeu32",
-            };
+            let name = prim.buffer_name();
 
             line!(
                 ctx,
-                "buffer.{buffer_call}(MEMORY.data, {memory} + {offset}, {expr})"
+                "buffer.write{name}(MEMORY.data, {memory} + {offset}, {expr})"
             );
 
-            offset += prim.byte_size();
+            offset += prim.byte_size_aligned();
         }
 
         Ok(())
