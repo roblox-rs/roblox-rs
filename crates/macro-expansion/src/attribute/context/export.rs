@@ -69,7 +69,7 @@ impl Emit for ExportFunction {
             let wasm_abi = with_trait(with_assoc(&from_abi, "Abi"), "WasmAbi");
             let (names, args) = get_abi_args(&arg_name, "WasmFromAbi", &ty);
             abi_arg_conversions.push(quote! {
-                let #arg_name = {
+                let #arg_name = unsafe {
                     #from_abi::from_abi(#wasm_abi::join(#(#names),*))
                 };
             });

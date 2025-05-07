@@ -42,7 +42,7 @@ impl WasmIntoAbi for LuauValue {
 impl WasmFromAbi for LuauValue {
     type Abi = LuauValue;
 
-    fn from_abi(value: Self::Abi) -> Self {
+    unsafe fn from_abi(value: Self::Abi) -> Self {
         value
     }
 }

@@ -5,14 +5,14 @@ use super::{wasm_abi::WasmAbi, wasm_primitive::WasmPrimitive};
 pub trait WasmFromAbi: WasmDescribe {
     type Abi: WasmAbi;
 
-    fn from_abi(value: Self::Abi) -> Self;
+    unsafe fn from_abi(value: Self::Abi) -> Self;
 }
 
 impl<T: WasmPrimitive> WasmFromAbi for T {
     type Abi = T;
 
     #[inline(always)]
-    fn from_abi(value: Self::Abi) -> Self {
+    unsafe fn from_abi(value: Self::Abi) -> Self {
         value
     }
 }
@@ -22,7 +22,7 @@ impl<T: WasmFromAbi<Abi: WasmAbi<Prim4 = ()>>> WasmFromAbi for Option<T> {
     type Abi = Option<T::Abi>;
 
     #[inline(always)]
-    fn from_abi(value: Self::Abi) -> Self {
+    unsafe fn from_abi(value: Self::Abi) -> Self {
         value.map(|v| T::from_abi(v))
     }
 }

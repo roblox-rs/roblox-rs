@@ -43,7 +43,7 @@ impl WasmIntoAbi for String {
 impl WasmFromAbi for String {
     type Abi = WasmSlice;
 
-    fn from_abi(value: Self::Abi) -> Self {
+    unsafe fn from_abi(value: Self::Abi) -> Self {
         unsafe { String::from_raw_parts(value.ptr, value.len, value.len) }
     }
 }

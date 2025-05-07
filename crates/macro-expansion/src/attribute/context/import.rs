@@ -116,7 +116,7 @@ impl Emit for ImportFunction {
                 #abi_fn
                 #(#def_arg_conversion)*
                 let #return_id = unsafe { #abi_name(#(#abi_arg_names),*) };
-                #abi_return_transform
+                unsafe { #abi_return_transform }
             }
         });
     }
