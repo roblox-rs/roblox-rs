@@ -81,7 +81,7 @@ impl Emit for ImportFunction {
             let arg_name = emit_id(format!("arg{index}"));
             let into_abi = with_trait(arg, "WasmIntoAbi");
             let wasm_abi = with_trait(with_assoc(&into_abi, "Abi"), "WasmAbi");
-            let (names, args) = get_abi_args(&arg_name, arg);
+            let (names, args) = get_abi_args(&arg_name, "WasmIntoAbi", arg);
 
             def_args.push(quote! { #arg_name: #arg });
             def_arg_conversion.push(quote! {
