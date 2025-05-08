@@ -77,10 +77,16 @@ impl Describe {
     }
 
     pub fn memory_size(&self) -> usize {
-        self.primitive_values()
-            .iter()
-            .map(|v| v.byte_size_aligned())
-            .sum()
+        let mut size = 0;
+        let mut max_align = 0;
+
+        for prim in self.primitive_values() {
+            let byte_size = prim.byte_size();
+            size = prim.next_align(size) + byte_size;
+            max_align = max_align.max(byte_size - 1);
+        }
+
+        (size + max_align) & !max_align
     }
 
     pub fn primitive_values(&self) -> Vec<Primitive> {
@@ -108,7 +114,7 @@ impl Describe {
             Describe::Function { .. } => unimplemented!(),
             Describe::Ref { ty } | Describe::RefMut { ty } => ty._primitive_values(out),
             Describe::Option { ty } => {
-                out.push(Primitive::U32);
+                out.push(Primitive::U8);
                 ty._primitive_values(out);
             }
         }
@@ -197,8 +203,10 @@ impl Primitive {
         }
     }
 
-    pub fn byte_size_aligned(&self) -> usize {
-        self.byte_size().max(4)
+    pub fn next_align(&self, offset: usize) -> usize {
+        let align = self.byte_size() - 1;
+
+        (offset + align) & !align
     }
 
     pub fn buffer_name(&self) -> &'static str {

@@ -163,12 +163,13 @@ impl Instruction for PullMemory<'_> {
 
         let mut offset = 0;
         for prim in self.primitives {
+            let aligned_offset = prim.next_align(offset);
             let buffer_name = prim.buffer_name();
-            let expr = format!("buffer.read{buffer_name}(MEMORY.data, {ptr} + {offset})");
+            let expr = format!("buffer.read{buffer_name}(MEMORY.data, {ptr} + {aligned_offset})");
 
             ctx.push(expr);
 
-            offset += prim.byte_size_aligned();
+            offset = aligned_offset + prim.byte_size();
         }
 
         Ok(())

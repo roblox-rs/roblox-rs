@@ -161,14 +161,15 @@ impl Instruction for WriteMemory<'_> {
         }
 
         for (expr, prim) in ty_exprs.iter().zip(self.primitives) {
+            let aligned_offset = prim.next_align(offset);
             let name = prim.buffer_name();
 
             line!(
                 ctx,
-                "buffer.write{name}(MEMORY.data, {memory} + {offset}, {expr})"
+                "buffer.write{name}(MEMORY.data, {memory} + {aligned_offset}, {expr})"
             );
 
-            offset += prim.byte_size_aligned();
+            offset = aligned_offset + prim.byte_size();
         }
 
         Ok(())
