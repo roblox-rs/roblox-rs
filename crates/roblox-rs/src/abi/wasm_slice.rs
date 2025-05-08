@@ -67,6 +67,28 @@ impl<T: WasmPrimitive> WasmIntoAbi for &mut [T] {
     }
 }
 
+impl<T: WasmIntoAbi> WasmIntoAbi for Box<[T]> {
+    type Abi = WasmSlice;
+
+    fn into_abi(self) -> Self::Abi {
+        // TODO: Should we introduce a specialization trait to avoid this allocation on, e.g `Box<[u8]>` or `Vec<u8>`?
+        let slice: Box<[_]> = self.into_vec().into_iter().map(|v| v.into_abi()).collect();
+        let ptr = slice.as_ptr() as *mut u8;
+        let len = slice.len();
+        std::mem::forget(slice);
+
+        WasmSlice { ptr, len }
+    }
+}
+
+impl<T: WasmIntoAbi> WasmIntoAbi for Vec<T> {
+    type Abi = <Box<[T]> as WasmIntoAbi>::Abi;
+
+    fn into_abi(self) -> Self::Abi {
+        self.into_boxed_slice().into_abi()
+    }
+}
+
 impl<'a> WasmIntoAbi for &'a str {
     type Abi = <&'a [u8] as WasmIntoAbi>::Abi;
 

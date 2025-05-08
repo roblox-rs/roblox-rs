@@ -43,7 +43,6 @@ impl<'a> InstructionContext<'a> {
         self.inputs.pop().expect("inputs is empty")
     }
 
-    #[allow(unused)]
     pub fn pop_array<const T: usize>(&mut self) -> [String; T] {
         self.inputs
             .split_off(self.inputs.len() - T)
@@ -61,7 +60,7 @@ impl<'a> InstructionContext<'a> {
         self.prereq_complex(value)
     }
 
-    fn prereq_complex(&mut self, expr: String) -> io::Result<String> {
+    pub fn prereq_complex(&mut self, expr: String) -> io::Result<String> {
         // If this expression isn't an identifier, we add it to a variable as it might have side effects.
         if expr.chars().any(|v| !v.is_alphanumeric() && v != '_') {
             let prereq_id = self.vars.next("prereq");

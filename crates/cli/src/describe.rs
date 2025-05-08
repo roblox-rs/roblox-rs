@@ -15,6 +15,7 @@ const OPTION: u32 = 13;
 const EXTERNREF: u32 = 14;
 const STRING: u32 = 15;
 const SLICE: u32 = 16;
+const VECTOR: u32 = 17;
 
 #[derive(Debug, Clone)]
 pub enum Describe {
@@ -30,6 +31,9 @@ pub enum Describe {
     F64,
     ExternRef,
     String,
+    Vector {
+        ty: Box<Describe>,
+    },
     Slice {
         ty: Box<Describe>,
     },
@@ -67,6 +71,7 @@ impl Describe {
             Describe::Ref { ty } => ty.value_count(),
             Describe::RefMut { ty } => ty.value_count(),
             Describe::Slice { .. } => 2,
+            Describe::Vector { .. } => 2,
             Describe::String => 2,
         }
     }
@@ -98,8 +103,9 @@ impl Describe {
             Describe::F32 => out.push(Primitive::F32),
             Describe::F64 => out.push(Primitive::F64),
             Describe::String => out.extend([Primitive::U32, Primitive::U32]),
+            Describe::Vector { .. } => out.extend([Primitive::U32, Primitive::U32]),
+            Describe::Slice { .. } => out.extend([Primitive::U32, Primitive::U32]),
             Describe::Function { .. } => unimplemented!(),
-            Describe::Slice { .. } => unimplemented!(),
             Describe::Ref { ty } | Describe::RefMut { ty } => ty._primitive_values(out),
             Describe::Option { ty } => {
                 out.push(Primitive::U32);
@@ -126,6 +132,9 @@ impl Describe {
             F64 => Describe::F64,
             EXTERNREF => Describe::ExternRef,
             STRING => Describe::String,
+            VECTOR => Describe::Vector {
+                ty: Box::new(Describe::_parse(value)),
+            },
             SLICE => Describe::Slice {
                 ty: Box::new(Describe::_parse(value)),
             },

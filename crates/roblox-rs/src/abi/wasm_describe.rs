@@ -21,6 +21,7 @@ pub const OPTION: u32 = 13;
 pub const EXTERNREF: u32 = 14;
 pub const STRING: u32 = 15;
 pub const SLICE: u32 = 16;
+pub const VECTOR: u32 = 17;
 
 macro_rules! simple {
 	($($t:ty:$e:expr;)*) => {
@@ -60,6 +61,19 @@ impl<T> WasmDescribe for *mut T {
     #[inline(always)]
     fn describe() {
         <u32 as WasmDescribe>::describe();
+    }
+}
+
+impl<T: WasmDescribe> WasmDescribe for Vec<T> {
+    fn describe() {
+        <Box<[T]> as WasmDescribe>::describe();
+    }
+}
+
+impl<T: WasmDescribe> WasmDescribe for Box<[T]> {
+    fn describe() {
+        describe(VECTOR);
+        T::describe();
     }
 }
 
