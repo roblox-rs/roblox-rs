@@ -26,7 +26,7 @@ impl Instruction for RustToLuau<'_> {
             | Describe::I8
             | Describe::I16
             | Describe::I32 => Ok(()),
-            Describe::ExternRef => RustExternRefToLuau.render(ctx),
+            Describe::ExternRef => RustOwnedExternRefToLuau.render(ctx),
             Describe::Boolean => RustBooleanToLuau.render(ctx),
             Describe::Option { ty } => RustOptionToLuau { ty: *ty.clone() }.render(ctx),
             Describe::Vector { ty } => RustVectorToLuau { ty: *ty.clone() }.render(ctx),
@@ -55,6 +55,7 @@ impl Instruction for RustRefToLuau<'_> {
         match &self.ty {
             Describe::String => RustRefStringToLuau.render(ctx),
             Describe::Slice { ty } => RustSliceToLuau { ty: *ty.clone() }.render(ctx),
+            Describe::ExternRef => RustRefExternRefToLuau.render(ctx),
             ty => {
                 unimplemented!("invalid rust reference type: {ty:?}");
             }
@@ -246,9 +247,9 @@ impl Instruction for RustOptionToLuau {
     }
 }
 
-pub struct RustExternRefToLuau;
+pub struct RustOwnedExternRefToLuau;
 
-impl Instruction for RustExternRefToLuau {
+impl Instruction for RustOwnedExternRefToLuau {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let value = ctx.pop_complex()?;
         let value_name = ctx.vars.next("value");
@@ -257,6 +258,26 @@ impl Instruction for RustExternRefToLuau {
         line!(ctx, "HEAP[{value}] = nil");
 
         ctx.push(value_name);
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustRefExternRefToLuau;
+
+impl Instruction for RustRefExternRefToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let value = ctx.pop();
+
+        ctx.push(format!("HEAP[{value}]"));
 
         Ok(())
     }
