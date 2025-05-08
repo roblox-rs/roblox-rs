@@ -27,6 +27,7 @@ impl Instruction for LuauToRust<'_> {
             | Describe::I32 => Ok(()),
             Describe::ExternRef => LuauExternRefToRust.render(ctx),
             Describe::Boolean => LuauBooleanToRust.render(ctx),
+            Describe::String => LuauStringToRust.render(ctx),
             Describe::Option { ty } => LuauOptionToRust { ty: *ty.clone() }.render(ctx),
             Describe::Void => {
                 ctx.pop();
@@ -61,6 +62,32 @@ impl Instruction for LuauBooleanToRust {
 
     fn get_outputs(&self) -> usize {
         1
+    }
+}
+
+pub struct LuauStringToRust;
+
+impl Instruction for LuauStringToRust {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let value = ctx.pop_complex()?;
+        let result = ctx.vars.next("string");
+        let alloc = ctx.intrinsics.get("alloc");
+
+        line!(ctx, "local {result} = WASM.func_list.{alloc}(#{value}, 1)");
+        line!(ctx, "buffer.writestring(MEMORY.data, {result}, {value})");
+
+        ctx.push(result);
+        ctx.push(format!("#{value}"));
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        2
     }
 }
 
