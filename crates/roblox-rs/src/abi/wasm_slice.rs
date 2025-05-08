@@ -26,25 +26,19 @@ impl WasmAbi for WasmSlice {
     }
 }
 
-// TODO: Convert this to Vec<u8> once implemented
 impl WasmIntoAbi for String {
-    type Abi = WasmSlice;
+    type Abi = <Vec<u8> as WasmIntoAbi>::Abi;
 
     fn into_abi(self) -> Self::Abi {
-        let mut slice = self.into_boxed_str();
-        let ptr = slice.as_mut_ptr();
-        let len = slice.len();
-        std::mem::forget(slice);
-
-        WasmSlice { ptr, len }
+        self.into_bytes().into_abi()
     }
 }
 
 impl WasmFromAbi for String {
-    type Abi = WasmSlice;
+    type Abi = <Vec<u8> as WasmFromAbi>::Abi;
 
     unsafe fn from_abi(value: Self::Abi) -> Self {
-        unsafe { String::from_raw_parts(value.ptr, value.len, value.len) }
+        String::from_utf8_unchecked(<Vec<u8> as WasmFromAbi>::from_abi(value))
     }
 }
 
