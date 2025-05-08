@@ -159,7 +159,11 @@ pub struct PullMemory<'a> {
 
 impl Instruction for PullMemory<'_> {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
-        let ptr = ctx.pop();
+        let mut ptr = ctx.pop();
+
+        if self.primitives.len() > 1 {
+            ptr = ctx.prereq_complex(ptr)?;
+        }
 
         let mut offset = 0;
         for prim in self.primitives {
