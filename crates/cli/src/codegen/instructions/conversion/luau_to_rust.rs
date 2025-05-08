@@ -100,18 +100,20 @@ pub struct LuauVecToRust {
 impl Instruction for LuauVecToRust {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let vec = ctx.pop_complex()?;
-        let var = ctx.vars.next("vec");
-        let alloc = ctx.intrinsics.get("alloc");
         let size = self.ty.memory_size();
         let primitives = &self.ty.primitive_values();
+        let alloc = ctx.intrinsics.get("alloc");
+        let var = ctx.vars.next("vec");
+        let index = ctx.vars.next("index");
+        let elem = ctx.vars.next("elem");
 
         line!(ctx, "local {var} = {alloc}(#{vec} * {size}, 4)");
-        push!(ctx, "for i, v in ipairs({vec}) do");
+        push!(ctx, "for {index}, {elem} in ipairs({vec}) do");
 
-        ctx.push("v");
+        ctx.push(elem);
         LuauToRust { ty: &self.ty }.render(ctx)?;
 
-        ctx.push(format!("{var} + (i - 1) * {size}"));
+        ctx.push(format!("{var} + ({index} - 1) * {size}"));
         WriteMemory { primitives }.render(ctx)?;
 
         pull!(ctx, "end");

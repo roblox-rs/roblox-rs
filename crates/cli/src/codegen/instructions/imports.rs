@@ -153,8 +153,12 @@ pub struct WriteMemory<'a> {
 impl Instruction for WriteMemory<'_> {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let mut offset = 0;
-        let memory = ctx.pop();
+        let mut memory = ctx.pop();
         let ty_exprs = ctx.pop_many(self.primitives.len());
+
+        if self.primitives.len() > 1 {
+            memory = ctx.prereq_complex(memory)?;
+        }
 
         for (expr, prim) in ty_exprs.iter().zip(self.primitives) {
             let name = prim.buffer_name();

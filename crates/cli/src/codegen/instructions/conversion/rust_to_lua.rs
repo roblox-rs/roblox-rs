@@ -111,16 +111,20 @@ pub struct RustVectorToLuau {
 impl Instruction for RustVectorToLuau {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let [addr, len] = ctx.pop_array();
+        let addr = ctx.prereq_complex(addr)?;
+        let len = ctx.prereq_complex(len)?;
         let result_name = ctx.vars.next("vector");
         let free = ctx.intrinsics.get("free");
         let ty_size = self.ty.memory_size();
         let primitives = &self.ty.primitive_values();
+        let index = ctx.vars.next("index");
 
         line!(ctx, "local {result_name} = table.create({len})");
-        push!(ctx, "for i = 1, {len} do");
+        push!(ctx, "for {index} = 1, {len} do");
 
-        ctx.push(format!("{addr} + (i - 1) * {ty_size}"));
+        ctx.push(format!("{addr} + ({index} - 1) * {ty_size}"));
         PullMemory { primitives }.render(ctx)?;
+
         RustToLuau { ty: &self.ty }.render(ctx)?;
 
         let value = ctx.pop();
