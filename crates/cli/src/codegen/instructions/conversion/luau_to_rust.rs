@@ -101,13 +101,14 @@ impl Instruction for LuauVecToRust {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let vec = ctx.pop_complex()?;
         let size = self.ty.memory_size();
+        let align = self.ty.max_align();
         let primitives = &self.ty.primitive_values();
         let alloc = ctx.intrinsics.get("alloc");
         let var = ctx.vars.next("vec");
         let index = ctx.vars.next("index");
         let elem = ctx.vars.next("elem");
 
-        line!(ctx, "local {var} = {alloc}(#{vec} * {size}, 4)");
+        line!(ctx, "local {var} = {alloc}(#{vec} * {size}, {align})");
         push!(ctx, "for {index}, {elem} in ipairs({vec}) do");
 
         ctx.push(elem);

@@ -115,14 +115,15 @@ impl Instruction for RustVectorToLuau {
         let len = ctx.prereq_complex(len)?;
         let result_name = ctx.vars.next("vector");
         let free = ctx.intrinsics.get("free");
-        let ty_size = self.ty.memory_size();
+        let size = self.ty.memory_size();
+        let align = self.ty.max_align();
         let primitives = &self.ty.primitive_values();
         let index = ctx.vars.next("index");
 
         line!(ctx, "local {result_name} = table.create({len})");
         push!(ctx, "for {index} = 1, {len} do");
 
-        ctx.push(format!("{addr} + ({index} - 1) * {ty_size}"));
+        ctx.push(format!("{addr} + ({index} - 1) * {size}"));
         PullMemory { primitives }.render(ctx)?;
 
         RustToLuau { ty: &self.ty }.render(ctx)?;
@@ -130,9 +131,7 @@ impl Instruction for RustVectorToLuau {
         let value = ctx.pop();
         line!(ctx, "table.insert({result_name}, {value})");
         pull!(ctx, "end");
-
-        // TODO: is this `free` sound? should we use `memory_size` or `byte_size` for the length?
-        line!(ctx, "{free}({addr}, {len} * {ty_size}, 4)");
+        line!(ctx, "{free}({addr}, {len} * {size}, {align})");
 
         ctx.push(result_name);
 

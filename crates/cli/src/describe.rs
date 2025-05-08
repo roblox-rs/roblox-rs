@@ -76,6 +76,14 @@ impl Describe {
         }
     }
 
+    pub fn max_align(&self) -> usize {
+        self.primitive_values()
+            .iter()
+            .map(|v| v.byte_size())
+            .max()
+            .unwrap()
+    }
+
     pub fn memory_size(&self) -> usize {
         let mut size = 0;
         let mut max_align = 0;
