@@ -99,7 +99,8 @@ impl Intrinsics<'_> {
             self.used.push(name);
         }
 
-        intrinsic.export_name.clone()
+        let export_name = &intrinsic.export_name;
+        format!("WASM.func_list.{export_name}")
     }
 }
 

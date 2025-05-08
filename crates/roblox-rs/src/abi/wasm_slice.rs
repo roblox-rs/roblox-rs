@@ -81,11 +81,34 @@ impl<T: WasmIntoAbi> WasmIntoAbi for Box<[T]> {
     }
 }
 
+impl<T: WasmFromAbi> WasmFromAbi for Box<[T]> {
+    type Abi = WasmSlice;
+
+    unsafe fn from_abi(value: Self::Abi) -> Self {
+        Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+            value.ptr as *mut T::Abi,
+            value.len,
+        ))
+        .into_vec()
+        .into_iter()
+        .map(|v| T::from_abi(v))
+        .collect()
+    }
+}
+
 impl<T: WasmIntoAbi> WasmIntoAbi for Vec<T> {
     type Abi = <Box<[T]> as WasmIntoAbi>::Abi;
 
     fn into_abi(self) -> Self::Abi {
         self.into_boxed_slice().into_abi()
+    }
+}
+
+impl<T: WasmFromAbi> WasmFromAbi for Vec<T> {
+    type Abi = <Box<[T]> as WasmFromAbi>::Abi;
+
+    unsafe fn from_abi(value: Self::Abi) -> Self {
+        <Box<[T]> as WasmFromAbi>::from_abi(value).into_vec()
     }
 }
 

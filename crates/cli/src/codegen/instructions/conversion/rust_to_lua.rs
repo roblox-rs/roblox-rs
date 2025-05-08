@@ -128,7 +128,7 @@ impl Instruction for RustVectorToLuau {
         pull!(ctx, "end");
 
         // TODO: is this `free` sound? should we use `memory_size` or `byte_size` for the length?
-        line!(ctx, "WASM.func_list.{free}({addr}, {len} * {ty_size}, 4)");
+        line!(ctx, "{free}({addr}, {len} * {ty_size}, 4)");
 
         ctx.push(result_name);
 
@@ -180,7 +180,7 @@ impl Instruction for RustOwnedStringToLuau {
 
         let read_expr = ctx.pop();
         line!(ctx, "local {var} = {read_expr}");
-        line!(ctx, "WASM.func_list.{free}({addr}, {len}, 1)");
+        line!(ctx, "{free}({addr}, {len}, 1)");
 
         ctx.push(var);
 
