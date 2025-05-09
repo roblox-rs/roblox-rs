@@ -80,14 +80,15 @@ impl Instruction for RustSliceToLuau {
         // currently only WasmPrimitive slices are accepted
         let [addr, len] = ctx.pop_array();
         let result_name = ctx.vars.next("slice");
+        let index = ctx.vars.next("index");
         let primitive = self.ty.primitive_values()[0];
         let buffer = primitive.buffer_name();
         let size = primitive.byte_size();
         let len = ctx.prereq_complex(len)?;
 
         line!(ctx, "local {result_name} = table.create({len})");
-        push!(ctx, "for i = 1, {len} do");
-        line!(ctx, "table.insert({result_name}, buffer.read{buffer}(MEMORY.data, {addr} + (i - 1) * {size}))");
+        push!(ctx, "for {index} = 1, {len} do");
+        line!(ctx, "table.insert({result_name}, buffer.read{buffer}(MEMORY.data, {addr} + ({index} - 1) * {size}))");
         pull!(ctx, "end");
 
         ctx.push(result_name);
