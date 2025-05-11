@@ -2,7 +2,7 @@ use std::io::{self, Write};
 
 use crate::{
     codegen::{
-        instructions::PushConst,
+        instructions::{PullMemory, PushConst},
         macros::{line, pull, push},
         traits::{Instruction, InstructionContext},
     },
@@ -26,16 +26,173 @@ impl Instruction for RustToLuau<'_> {
             | Describe::I8
             | Describe::I16
             | Describe::I32 => Ok(()),
-            Describe::ExternRef => RustExternRefToLuau.render(ctx),
+            Describe::ExternRef => RustOwnedExternRefToLuau.render(ctx),
             Describe::Boolean => RustBooleanToLuau.render(ctx),
             Describe::Option { ty } => RustOptionToLuau { ty: *ty.clone() }.render(ctx),
+            Describe::Vector { ty } => RustVectorToLuau { ty: *ty.clone() }.render(ctx),
             Describe::Void => PushConst::new("nil").render(ctx),
+            Describe::String => RustOwnedStringToLuau.render(ctx),
+            Describe::Ref { ty } => RustRefToLuau { ty }.render(ctx),
             _ => unimplemented!(),
         }
     }
 
     fn get_inputs(&self) -> usize {
         self.ty.value_count()
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustRefToLuau<'a> {
+    ty: &'a Describe,
+}
+
+impl Instruction for RustRefToLuau<'_> {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        match &self.ty {
+            Describe::String => RustRefStringToLuau.render(ctx),
+            Describe::Slice { ty } => RustSliceToLuau { ty: *ty.clone() }.render(ctx),
+            Describe::ExternRef => RustRefExternRefToLuau.render(ctx),
+            ty => {
+                unimplemented!("invalid rust reference type: {ty:?}");
+            }
+        }
+    }
+
+    fn get_inputs(&self) -> usize {
+        self.ty.value_count()
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustSliceToLuau {
+    ty: Describe,
+}
+
+impl Instruction for RustSliceToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        // currently only WasmPrimitive slices are accepted
+        let [addr, len] = ctx.pop_array();
+        let result_name = ctx.vars.next("slice");
+        let index = ctx.vars.next("index");
+        let primitive = self.ty.primitive_values()[0];
+        let buffer = primitive.buffer_name();
+        let size = primitive.byte_size();
+        let len = ctx.prereq_complex(len)?;
+
+        line!(ctx, "local {result_name} = table.create({len})");
+        push!(ctx, "for {index} = 1, {len} do");
+        line!(ctx, "table.insert({result_name}, buffer.read{buffer}(MEMORY.data, {addr} + ({index} - 1) * {size}))");
+        pull!(ctx, "end");
+
+        ctx.push(result_name);
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        2
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustVectorToLuau {
+    ty: Describe,
+}
+
+impl Instruction for RustVectorToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let [addr, len] = ctx.pop_array();
+        let addr = ctx.prereq_complex(addr)?;
+        let len = ctx.prereq_complex(len)?;
+        let result_name = ctx.vars.next("vector");
+        let free = ctx.intrinsics.get("free");
+        let size = self.ty.memory_size();
+        let align = self.ty.max_align();
+        let primitives = &self.ty.primitive_values();
+        let index = ctx.vars.next("index");
+
+        line!(ctx, "local {result_name} = table.create({len})");
+        push!(ctx, "for {index} = 1, {len} do");
+
+        ctx.push(format!("{addr} + ({index} - 1) * {size}"));
+        PullMemory { primitives }.render(ctx)?;
+
+        RustToLuau { ty: &self.ty }.render(ctx)?;
+
+        let value = ctx.pop();
+        line!(ctx, "table.insert({result_name}, {value})");
+        pull!(ctx, "end");
+        line!(ctx, "{free}({addr}, {len} * {size}, {align})");
+
+        ctx.push(result_name);
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        2
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustRefStringToLuau;
+
+impl Instruction for RustRefStringToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let [addr, len] = ctx.pop_array();
+
+        ctx.push(format!("buffer.readstring(MEMORY.data, {addr}, {len})"));
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        2
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustOwnedStringToLuau;
+
+impl Instruction for RustOwnedStringToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let [addr, len] = ctx.pop_array();
+        let addr = ctx.prereq_complex(addr)?;
+        let len = ctx.prereq_complex(len)?;
+        let var = ctx.vars.next("string");
+        let free = ctx.intrinsics.get("free");
+
+        ctx.push(&addr);
+        ctx.push(&len);
+        RustRefStringToLuau.render(ctx)?;
+
+        let read_expr = ctx.pop();
+        line!(ctx, "local {var} = {read_expr}");
+        line!(ctx, "{free}({addr}, {len}, 1)");
+
+        ctx.push(var);
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        2
     }
 
     fn get_outputs(&self) -> usize {
@@ -94,9 +251,9 @@ impl Instruction for RustOptionToLuau {
     }
 }
 
-pub struct RustExternRefToLuau;
+pub struct RustOwnedExternRefToLuau;
 
-impl Instruction for RustExternRefToLuau {
+impl Instruction for RustOwnedExternRefToLuau {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let value = ctx.pop_complex()?;
         let value_name = ctx.vars.next("value");
@@ -105,6 +262,26 @@ impl Instruction for RustExternRefToLuau {
         line!(ctx, "HEAP[{value}] = nil");
 
         ctx.push(value_name);
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        1
+    }
+}
+
+pub struct RustRefExternRefToLuau;
+
+impl Instruction for RustRefExternRefToLuau {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let value = ctx.pop();
+
+        ctx.push(format!("HEAP[{value}]"));
 
         Ok(())
     }

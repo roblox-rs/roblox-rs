@@ -2,6 +2,7 @@ use std::io::{self, Write};
 
 use crate::{
     codegen::{
+        instructions::WriteMemory,
         macros::{line, pull, push},
         traits::{Instruction, InstructionContext},
     },
@@ -27,7 +28,9 @@ impl Instruction for LuauToRust<'_> {
             | Describe::I32 => Ok(()),
             Describe::ExternRef => LuauExternRefToRust.render(ctx),
             Describe::Boolean => LuauBooleanToRust.render(ctx),
+            Describe::String => LuauStringToRust.render(ctx),
             Describe::Option { ty } => LuauOptionToRust { ty: *ty.clone() }.render(ctx),
+            Describe::Vector { ty } => LuauVecToRust { ty: *ty.clone() }.render(ctx),
             Describe::Void => {
                 ctx.pop();
                 Ok(())
@@ -61,6 +64,73 @@ impl Instruction for LuauBooleanToRust {
 
     fn get_outputs(&self) -> usize {
         1
+    }
+}
+
+pub struct LuauStringToRust;
+
+impl Instruction for LuauStringToRust {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let value = ctx.pop_complex()?;
+        let result = ctx.vars.next("string");
+        let alloc = ctx.intrinsics.get("alloc");
+
+        line!(ctx, "local {result} = {alloc}(#{value}, 1)");
+        line!(ctx, "buffer.writestring(MEMORY.data, {result}, {value})");
+
+        ctx.push(result);
+        ctx.push(format!("#{value}"));
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        2
+    }
+}
+
+pub struct LuauVecToRust {
+    ty: Describe,
+}
+
+impl Instruction for LuauVecToRust {
+    fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
+        let vec = ctx.pop_complex()?;
+        let size = self.ty.memory_size();
+        let align = self.ty.max_align();
+        let primitives = &self.ty.primitive_values();
+        let alloc = ctx.intrinsics.get("alloc");
+        let var = ctx.vars.next("vec");
+        let index = ctx.vars.next("index");
+        let elem = ctx.vars.next("elem");
+
+        line!(ctx, "local {var} = {alloc}(#{vec} * {size}, {align})");
+        push!(ctx, "for {index}, {elem} in ipairs({vec}) do");
+
+        ctx.push(elem);
+        LuauToRust { ty: &self.ty }.render(ctx)?;
+
+        ctx.push(format!("{var} + ({index} - 1) * {size}"));
+        WriteMemory { primitives }.render(ctx)?;
+
+        pull!(ctx, "end");
+
+        ctx.push(var);
+        ctx.push(format!("#{vec}"));
+
+        Ok(())
+    }
+
+    fn get_inputs(&self) -> usize {
+        1
+    }
+
+    fn get_outputs(&self) -> usize {
+        2
     }
 }
 

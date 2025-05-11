@@ -18,3 +18,12 @@ fn alloc(bytes: usize, align: usize) -> *mut u8 {
 
     heap
 }
+
+#[intrinsic]
+fn free(ptr: *mut u8, bytes: usize, align: usize) {
+    let Ok(layout) = Layout::from_size_align(bytes, align) else {
+        panic!("invalid allocation size")
+    };
+
+    std::alloc::dealloc(ptr, layout);
+}

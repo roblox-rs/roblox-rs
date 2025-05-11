@@ -153,23 +153,23 @@ pub struct WriteMemory<'a> {
 impl Instruction for WriteMemory<'_> {
     fn render(&self, ctx: &mut InstructionContext) -> io::Result<()> {
         let mut offset = 0;
-        let memory = ctx.pop();
+        let mut memory = ctx.pop();
         let ty_exprs = ctx.pop_many(self.primitives.len());
 
+        if self.primitives.len() > 1 {
+            memory = ctx.prereq_complex(memory)?;
+        }
+
         for (expr, prim) in ty_exprs.iter().zip(self.primitives) {
-            let buffer_call = match prim {
-                Primitive::F32 => "writef32",
-                Primitive::F64 => "writef64",
-                Primitive::I32 => "writei32",
-                Primitive::U32 => "writeu32",
-            };
+            let aligned_offset = prim.next_align(offset);
+            let name = prim.buffer_name();
 
             line!(
                 ctx,
-                "buffer.{buffer_call}(MEMORY.data, {memory} + {offset}, {expr})"
+                "buffer.write{name}(MEMORY.data, {memory} + {aligned_offset}, {expr})"
             );
 
-            offset += prim.byte_size();
+            offset = aligned_offset + prim.byte_size();
         }
 
         Ok(())

@@ -21,16 +21,18 @@ impl Emit for FunctionDescription<'_> {
         };
 
         tokens.extend(quote! {
-            #[no_mangle]
-            #[inline(never)]
-            extern "C" fn #describe_name() {
-                use roblox_rs::internal::*;
+            const _: () = {
+                #[no_mangle]
+                #[inline(never)]
+                extern "C" fn #describe_name() {
+                    use roblox_rs::internal::*;
 
-                describe(FUNCTION);
-                describe(#arg_count);
-                #(<#arg_types as WasmDescribe>::describe();)*;
-                <#output_type as WasmDescribe>::describe();
-            }
+                    describe(FUNCTION);
+                    describe(#arg_count);
+                    #(<#arg_types as WasmDescribe>::describe();)*;
+                    <#output_type as WasmDescribe>::describe();
+                }
+            };
         });
     }
 }

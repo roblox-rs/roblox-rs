@@ -37,11 +37,15 @@ pub fn with_trait(ty: impl ToTokens, trait_name: impl AsRef<str>) -> TokenStream
     }
 }
 
-pub fn get_abi_args(arg_name: impl Display, ty: &Type) -> (Vec<Ident>, Vec<TokenStream>) {
+pub fn get_abi_args(
+    arg_name: impl Display,
+    trait_name: &str,
+    ty: &Type,
+) -> (Vec<Ident>, Vec<TokenStream>) {
     let mut abi_arg_names = Vec::new();
     let mut abi_args = Vec::new();
 
-    let from_abi = with_trait(ty, "WasmFromAbi");
+    let from_abi = with_trait(ty, trait_name);
     let wasm_abi = with_trait(with_assoc(&from_abi, "Abi"), "WasmAbi");
 
     for prim in 1..=4 {

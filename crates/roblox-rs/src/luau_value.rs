@@ -1,4 +1,4 @@
-use crate::internal::{WasmAbi, WasmDescribe, WasmFromAbi, WasmIntoAbi};
+use crate::internal::{WasmDescribe, WasmFromAbi, WasmIntoAbi};
 
 pub struct LuauValue(u32);
 
@@ -11,38 +11,26 @@ impl WasmDescribe for LuauValue {
     }
 }
 
-impl WasmAbi for LuauValue {
-    type Prim1 = u32;
-    type Prim2 = ();
-    type Prim3 = ();
-    type Prim4 = ();
+impl WasmIntoAbi for LuauValue {
+    type Abi = u32;
 
-    fn join(
-        prim1: Self::Prim1,
-        _prim2: Self::Prim2,
-        _prim3: Self::Prim3,
-        _prim4: Self::Prim4,
-    ) -> Self {
-        LuauValue(prim1)
-    }
-
-    fn split(self) -> (Self::Prim1, Self::Prim2, Self::Prim3, Self::Prim4) {
-        (self.0, (), (), ())
+    fn into_abi(self) -> Self::Abi {
+        self.0
     }
 }
 
-impl WasmIntoAbi for LuauValue {
-    type Abi = LuauValue;
+impl WasmIntoAbi for &LuauValue {
+    type Abi = u32;
 
     fn into_abi(self) -> Self::Abi {
-        self
+        self.0
     }
 }
 
 impl WasmFromAbi for LuauValue {
-    type Abi = LuauValue;
+    type Abi = u32;
 
-    fn from_abi(value: Self::Abi) -> Self {
-        value
+    unsafe fn from_abi(value: Self::Abi) -> Self {
+        LuauValue(value)
     }
 }
